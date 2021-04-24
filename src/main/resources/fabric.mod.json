@@ -10,7 +10,7 @@
   ],
   "contact": {
     "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "sources": "https://github.com/kmorales13/ExtendedCycles"
   },
 
   "license": "MPL-2.0",
@@ -22,7 +22,9 @@
       "net.officialenx.extendedcycles.ExtendedCyclesMod"
     ]
   },
-  "mixins": [],
+  "mixins": [
+    "extendedcycles.mixin.json"
+  ],
 
   "depends": {
     "fabricloader": ">=0.7.4",

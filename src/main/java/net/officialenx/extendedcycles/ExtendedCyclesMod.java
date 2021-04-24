@@ -10,16 +10,16 @@ import com.oroarmor.config.Config;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.ActionResult;
+import net.officialenx.extendedcycles.callbacks.OnPlayerWakeUp;
 
 public class ExtendedCyclesMod implements ModInitializer {
 	public static Config CONFIG = new ExtendedCyclesConfig();
 
 	private int extendedTime = 0;
 	public static Map<Integer, Float> extendedPeriods = new HashMap<>();
-
-	private int dataExtendedTime = -1;
-	private long dataWorldTime = -1;
 
 	@Override
 	public void onInitialize() {
@@ -30,6 +30,11 @@ public class ExtendedCyclesMod implements ModInitializer {
 		System.out.println("[ExtendedCycles] Ready :)");
 
 		ServerTickEvents.END_WORLD_TICK.register(world -> doExtendTime(world));
+		OnPlayerWakeUp.EVENT.register(player -> {
+			onPlayerWakeUp(player);
+			return ActionResult.PASS;
+		});
+
 		ServerLifecycleEvents.SERVER_STOPPED.register(instance -> CONFIG.saveConfigToFile());
 	}
 
@@ -55,10 +60,6 @@ public class ExtendedCyclesMod implements ModInitializer {
 		}
 	}
 
-	private void loadData() {
-		
-	}
-
 	private void doExtendTime(ServerWorld world) {
 		if (world.getDimension() != world.getServer().getOverworld().getDimension())
 			return;
@@ -66,19 +67,24 @@ public class ExtendedCyclesMod implements ModInitializer {
 		long worldTime = world.getTimeOfDay();
 		int dayTime = (int) (worldTime % 24000L);
 
-		System.out.println("--------");
+		ExtendedCyclesState state = ExtendedCyclesState.get(world);
+
+		if (state == null)
+			return;
+
+		/*System.out.println("--------");
 		System.out.println("worldTime: " + worldTime);
-		System.out.println("dataWorldTime: " + dataWorldTime);
+		System.out.println("state.dataWorldTime: " + state.dataWorldTime);
 		System.out.println("extendedTime: " + extendedTime);
-		System.out.println("dataExtendedTime: " + dataExtendedTime);
+		System.out.println("state.dataExtendedTime: " + state.dataExtendedTime);*/
 
-		if (dataExtendedTime > 0) {
-			startExtendedPeriod(world, dataExtendedTime);
+		if (state.dataExtendedTime > 0) {
+			startExtendedPeriod(world, state.dataExtendedTime);
 
-			if (worldTime > dataWorldTime && worldTime < dataWorldTime + 600)
-				if (extendedPeriods.containsKey((int) (dataWorldTime % 24000L)) && extendedTime > 0
-						&& dataWorldTime > 0) {
-					worldTime = dataWorldTime;
+			if (worldTime > state.dataWorldTime && worldTime < state.dataWorldTime + 600)
+				if (extendedPeriods.containsKey((int) (state.dataWorldTime % 24000L)) && extendedTime > 0
+						&& state.dataWorldTime > 0) {
+					worldTime = state.dataWorldTime;
 					setWorldTime(world, worldTime);
 				}
 		}
@@ -89,7 +95,7 @@ public class ExtendedCyclesMod implements ModInitializer {
 			if (extendedTime <= 0)
 				endExtendedPeriod(world);
 
-			if (worldTime != dataWorldTime)
+			if (worldTime != state.dataWorldTime)
 				endExtendedPeriod(world);
 		} else {
 			for (Entry<Integer, Float> entry : extendedPeriods.entrySet()) {
@@ -103,8 +109,16 @@ public class ExtendedCyclesMod implements ModInitializer {
 			}
 		}
 
-		dataExtendedTime = extendedTime;
-		dataWorldTime = worldTime;
+		state.dataExtendedTime = extendedTime;
+		state.dataWorldTime = worldTime;
+		state.markDirty();
+	}
+
+	private void onPlayerWakeUp(ServerPlayerEntity player) {
+		ServerWorld world = player.getServerWorld();
+
+		if (isInExtendedPeriod(world))
+			endExtendedPeriod(world);
 	}
 
 	private void setExtendedTime(int value) {
@@ -113,10 +127,26 @@ public class ExtendedCyclesMod implements ModInitializer {
 
 	private void startExtendedPeriod(ServerWorld world, int timeInTicks) {
 		setExtendedTime(timeInTicks);
+
+		ExtendedCyclesState state = ExtendedCyclesState.get(world);
+		if (state != null)  {
+			state.dataExtendedTime = timeInTicks;
+			state.markDirty();
+		}
 	}
 
 	public void endExtendedPeriod(ServerWorld world) {
 		setExtendedTime(0);
+
+		ExtendedCyclesState state = ExtendedCyclesState.get(world);
+		if (state != null)  {
+			state.dataExtendedTime = 0;
+			state.markDirty();
+		}
+	}
+
+	private boolean isInExtendedPeriod(ServerWorld world) {
+		return extendedTime > 0;
 	}
 
 	private void setWorldTime(ServerWorld world, long worldTime) {
