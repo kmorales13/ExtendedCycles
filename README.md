@@ -35,4 +35,4 @@ The config file will have two options for day and night.
 - Entry: exact tick when the frozen time will begin (0 - 24000)
 - Minutes: amount of time to freeze time in minutes
 
-Using a negative value for the extended time will *skip* time ahead.
+Using a negative value for the minutes value will *skip* time ahead.
