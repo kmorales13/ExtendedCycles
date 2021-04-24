@@ -16,7 +16,7 @@ Time in minecraft is complex, and trying to modify it even more.
 
 ExtendedCycles works by adding a period of frozen time. This means it basically stops the internal clock for a given amount of time.
 
-**However, this make cause some other mods that rely on this internal clock to break or not work correctly.**
+**This may cause some other mods that rely on this internal clock to break or not work correctly.**
 
 ## Usage
 
